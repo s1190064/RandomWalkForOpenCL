@@ -1,4 +1,4 @@
-__kernel void particle_move(__global int2* particles, __global  char2* index_info, const int times, int num_particle, __global int2* move){
+__kernel void particle_move(__global int2* particles, const int times, __global float* random){
     
     const int WIDTH = 50;
     const int HEIGHT = WIDTH * 2;
@@ -9,30 +9,43 @@ __kernel void particle_move(__global int2* particles, __global  char2* index_inf
     //int lid = get_local_id(0);
     //printf("%d\t%d\n", gid, lid);
     
-    int i, j;
-    int2 temp;
-    char2 index;
-    int ind;
+    int i;
     
-    for(i = 20*gid; i < 20*gid + 2; ++i){
-        for(j = 0; j < times; ++j){
-            
-            index = (char2)index_info[i * times + j];
-            
-            //move
-            
-            temp = (int2)particles[i] + (int2)move[(int)index[0]];
-            ind = ((temp[0] >= 0 && temp[0] < HEIGHT) && (temp[1] >= 0 && temp[1] < WIDTH))? (int)index[0] : 0;
-            
-            particles[i] += (int2)move[ind];
-            
-            
-            //jump
-            temp = (int2)particles[i] + (int2)move[(int)index[1]];
-            ind = ((temp[0] >= 0 && temp[0] < HEIGHT) && (temp[1] >= 0 && temp[1] < WIDTH))? (int)index[1] : 0;
-            
-            particles[i] += (int2)move[ind];
+    const int upDown[]    = {0, -1, 0, 1,  0};
+    const int rightLeft[] = {0,  0, 1, 0, -1};
+    const int jumpIndex[] = {0,  4, 1, 2,  3};
+    
+    char index;
+    float xi;
+    int2 temp;
+    
+    for(i = 0; i < times; ++i){
+        xi = 4 * random[i * gid + i] + 1;
+        index = (char)xi;
+        
+        //move
+        temp[0] = particles[i * gid + i].x + upDown[index];
+        temp[1] = particles[i * gid + i].y + rightLeft[index];
+        index = ((temp[0] >= 0 && temp[0] < HEIGHT) && (temp[1] >= 0 && temp[1] < WIDTH))? index : 0;
+        if(index != 0){
+            particles[i * gid + i] = temp;
         }
+        
+        //jump
+        if(xi - (int)xi <= 0.5f){
+            index = jumpIndex[index];
+            temp[0] = particles[i * gid + i].x + upDown[index];
+            temp[1] = particles[i * gid + i].y + rightLeft[index];
+            index = ((temp[0] >= 0 && temp[0] < HEIGHT) && (temp[1] >= 0 && temp[1] < WIDTH))? index : 0;
+            
+            if(index != 0){
+                particles[i * gid + i] = temp;
+            }
+        }
+        
+        if(xi == 1){
+            printf("_A_\n");
+        }
+        //printf("times:%d  id:%d %f\n", i, gid, random[i]);
     }
-     
 }
